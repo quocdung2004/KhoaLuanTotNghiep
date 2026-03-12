@@ -1,12 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, User, Menu, X, Glasses, ChevronRight } from 'lucide-react';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  
+  // --- 1. STATE LƯU SỐ LƯỢNG GIỎ HÀNG ---
+  const [cartCount, setCartCount] = useState(0);
 
-  // Hàm đóng menu (dùng nhiều lần)
   const closeMenu = () => setIsOpen(false);
+
+  // --- 2. HÀM TÍNH TỔNG SỐ LƯỢNG TỪ LOCALSTORAGE ---
+  const calculateTotalItems = () => {
+    const cart = JSON.parse(localStorage.getItem('glassesCart')) || [];
+    const total = cart.reduce((sum, item) => sum + item.quantity, 0);
+    setCartCount(total);
+  };
+
+  // --- 3. LẮNG NGHE SỰ KIỆN KHI CÓ NGƯỜI BẤM "THÊM VÀO GIỎ" ---
+  useEffect(() => {
+    calculateTotalItems(); // Tính số lượng ngay khi web vừa tải xong
+    
+    // Đeo "tai nghe" để chờ tín hiệu 'cartUpdated' từ trang Chi tiết sản phẩm
+    window.addEventListener('cartUpdated', calculateTotalItems);
+
+    return () => {
+      // Tháo tai nghe khi chuyển trang để tránh lỗi bộ nhớ
+      window.removeEventListener('cartUpdated', calculateTotalItems);
+    };
+  }, []);
 
   return (
     <>
@@ -15,7 +37,7 @@ const Navbar = () => {
           <div className="flex justify-between h-16 items-center">
             
             {/* LOGO */}
-            <Link to="/" className="flex items-center space-x-2" onClick={closeMenu}>
+            <Link to="/" className="flex items-center space-x-2" onClick={closeMenu} translate="no">
               <Glasses className="w-8 h-8 text-blue-600" />
               <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 Dũng Glasses
@@ -34,11 +56,17 @@ const Navbar = () => {
 
             {/* NÚT CHỨC NĂNG */}
             <div className="flex items-center space-x-4">
+              
+              {/* --- NÚT GIỎ HÀNG ĐÃ ĐƯỢC NÂNG CẤP --- */}
               <Link to="/cart" className="relative p-2 text-gray-600 hover:text-blue-600 transition">
                 <ShoppingCart className="w-6 h-6" />
-                <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                  0
-                </span>
+                
+                {/* Cục màu đỏ báo số lượng (Chỉ hiện khi có hàng) */}
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm animate-in zoom-in">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
               </Link>
               
               <button className="hidden md:flex items-center space-x-2 bg-gray-900 text-white px-4 py-2 rounded-xl hover:bg-blue-600 transition">

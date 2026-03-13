@@ -1,31 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag, ShieldCheck, CheckSquare, Square } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag, ShieldCheck, AlertTriangle } from 'lucide-react'; // Import thêm AlertTriangle
 
 export default function Cart() {
+  const navigate = useNavigate();
   const [cartItems, setCartItems] = useState([]);
-  
-  // --- STATE MỚI: Lưu danh sách ID các sản phẩm được tick chọn ---
   const [selectedItems, setSelectedItems] = useState([]);
 
-  // 1. Tải dữ liệu giỏ hàng từ LocalStorage
+  // --- STATE MỚI: Quản lý hộp thoại Xóa ---
+  const [itemToDelete, setItemToDelete] = useState(null); // Chứa ID của sản phẩm đang định xóa
+
   useEffect(() => {
     const savedCart = JSON.parse(localStorage.getItem('glassesCart')) || [];
     setCartItems(savedCart);
-    
-    // Mặc định khi mới vào giỏ hàng, tick chọn sẵn tất cả các món (Giống Shopee)
-    // Nếu Dũng không muốn chọn sẵn thì bỏ dòng dưới này đi nhé
     setSelectedItems(savedCart.map(item => item.cartId));
   }, []);
 
-  // 2. Hàm lưu giỏ và đồng bộ Navbar
   const saveAndSyncCart = (newCart) => {
     setCartItems(newCart);
     localStorage.setItem('glassesCart', JSON.stringify(newCart));
     window.dispatchEvent(new Event('cartUpdated'));
   };
 
-  // 3. Hàm tăng/giảm số lượng
   const updateQuantity = (cartId, delta) => {
     const newCart = cartItems.map(item => {
       if (item.cartId === cartId) {
@@ -37,50 +33,55 @@ export default function Cart() {
     saveAndSyncCart(newCart);
   };
 
-  // 4. Hàm xóa sản phẩm
-  const removeItem = (cartId) => {
-    const newCart = cartItems.filter(item => item.cartId !== cartId);
-    saveAndSyncCart(newCart);
-    
-    // Nếu xóa sản phẩm, cũng phải gỡ nó ra khỏi danh sách đang chọn
-    setSelectedItems(prev => prev.filter(id => id !== cartId));
+  // --- LOGIC XÓA ĐƯỢC CẬP NHẬT ---
+
+  // 1. Hàm mở hộp thoại hỏi (Thay vì xóa ngay)
+  const promptRemoveItem = (cartId) => {
+    setItemToDelete(cartId);
   };
 
-  // --- LOGIC CHECKBOX MỚI ---
+  // 2. Hàm Xác nhận Xóa (Chạy khi bấm nút Đồng ý)
+  const confirmRemove = () => {
+    if (!itemToDelete) return;
 
-  // Xử lý tick chọn 1 món
+    const newCart = cartItems.filter(item => item.cartId !== itemToDelete);
+    saveAndSyncCart(newCart);
+    setSelectedItems(prev => prev.filter(id => id !== itemToDelete));
+
+    setItemToDelete(null); // Đóng hộp thoại sau khi xóa xong
+  };
+
+  // 3. Hàm Hủy Xóa
+  const cancelRemove = () => {
+    setItemToDelete(null);
+  };
+
   const toggleSelect = (cartId) => {
-    setSelectedItems(prev => 
-      prev.includes(cartId) 
-        ? prev.filter(id => id !== cartId) // Nếu đã tick rồi thì gỡ tick
-        : [...prev, cartId]                // Nếu chưa tick thì thêm vào mảng
+    setSelectedItems(prev =>
+      prev.includes(cartId) ? prev.filter(id => id !== cartId) : [...prev, cartId]
     );
   };
 
-  // Xử lý tick "Chọn tất cả"
   const toggleSelectAll = () => {
     if (selectedItems.length === cartItems.length) {
-      setSelectedItems([]); // Đã chọn hết rồi -> Bỏ chọn tất cả
+      setSelectedItems([]);
     } else {
-      setSelectedItems(cartItems.map(item => item.cartId)); // Chọn tất cả
+      setSelectedItems(cartItems.map(item => item.cartId));
     }
   };
 
-  // --- TÍNH TỔNG TIỀN (Chỉ tính những món ĐƯỢC CHỌN) ---
   const calculateTotal = () => {
     return cartItems
-      .filter(item => selectedItems.includes(item.cartId)) // Lọc ra món được tick
+      .filter(item => selectedItems.includes(item.cartId))
       .reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
-  // Tính tổng số LƯỢNG KÍNH đã chọn để hiển thị trên nút Thanh toán
   const calculateSelectedQuantity = () => {
     return cartItems
       .filter(item => selectedItems.includes(item.cartId))
       .reduce((sum, item) => sum + item.quantity, 0);
   };
 
-  // --- GIAO DIỆN GIỎ TRỐNG ---
   if (cartItems.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -98,13 +99,12 @@ export default function Cart() {
     );
   }
 
-  // --- GIAO DIỆN GIỎ CÓ HÀNG ---
   const isAllSelected = selectedItems.length === cartItems.length && cartItems.length > 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 pb-24">
+    <div className="min-h-screen bg-gray-50 py-8 pb-24 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         <Link to="/" className="inline-flex items-center text-gray-500 hover:text-blue-600 mb-6 font-medium transition">
           <ArrowLeft className="w-5 h-5 mr-2" /> Tiếp tục mua sắm
         </Link>
@@ -112,16 +112,11 @@ export default function Cart() {
         <h1 className="text-3xl font-black text-gray-900 mb-8">Giỏ hàng của bạn</h1>
 
         <div className="flex flex-col lg:flex-row gap-8">
-          
-          {/* CỘT TRÁI: DANH SÁCH SẢN PHẨM */}
+
           <div className="lg:w-2/3 space-y-4">
-            
-            {/* Thanh công cụ: Chọn tất cả */}
+
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
-              <button 
-                onClick={toggleSelectAll}
-                className="flex items-center gap-3 text-gray-700 hover:text-blue-600 transition group font-medium"
-              >
+              <button onClick={toggleSelectAll} className="flex items-center gap-3 text-gray-700 hover:text-blue-600 transition group font-medium">
                 <div className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-colors ${isAllSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300 group-hover:border-blue-400'}`}>
                   {isAllSelected && <ShieldCheck className="w-4 h-4 text-white" />}
                 </div>
@@ -129,94 +124,74 @@ export default function Cart() {
               </button>
             </div>
 
-            {/* Danh sách từng món hàng */}
             {cartItems.map((item) => {
               const isSelected = selectedItems.includes(item.cartId);
 
               return (
-                <div 
-                  key={item.cartId} 
-                  className={`bg-white p-4 sm:p-6 rounded-3xl shadow-sm border-2 transition-all flex flex-col sm:flex-row items-center gap-4 sm:gap-6 ${isSelected ? 'border-blue-400' : 'border-transparent hover:border-gray-200'}`}
-                >
-                  
-                  {/* CHECKBOX RIÊNG CHO TỪNG SẢN PHẨM */}
-                  <button 
-                    onClick={() => toggleSelect(item.cartId)}
-                    className="absolute sm:relative top-6 left-6 sm:top-auto sm:left-auto flex-shrink-0"
-                  >
-                    <div className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-colors ${isSelected ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-200' : 'border-gray-300 bg-gray-50 hover:border-blue-400'}`}>
-                      {isSelected && <ShieldCheck className="w-4 h-4 text-white" />}
+                <div key={item.cartId} className={`bg-white p-3 sm:p-5 rounded-2xl shadow-sm border-2 transition-all flex items-start gap-3 sm:gap-4 ${isSelected ? 'border-blue-400' : 'border-transparent hover:border-gray-200'}`}>
+
+                  <button onClick={() => toggleSelect(item.cartId)} className="mt-1 sm:mt-2 flex-shrink-0">
+                    <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded flex items-center justify-center border-2 transition-colors ${isSelected ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-200' : 'border-gray-300 bg-gray-50 hover:border-blue-400'}`}>
+                      {isSelected && <ShieldCheck className="w-3 h-3 sm:w-4 sm:h-4 text-white" />}
                     </div>
                   </button>
 
-                  {/* Ảnh sản phẩm */}
-                  <div 
-                    className="w-full sm:w-28 h-28 bg-gray-50 rounded-2xl flex-shrink-0 p-2 cursor-pointer"
-                    onClick={() => toggleSelect(item.cartId)} // Bấm vào ảnh cũng tick chọn
-                  >
+                  <div className="w-20 h-20 sm:w-28 sm:h-28 bg-gray-50 rounded-xl flex-shrink-0 p-1 cursor-pointer" onClick={() => toggleSelect(item.cartId)}>
                     <img src={item.image} alt={item.name} className="w-full h-full object-contain" />
                   </div>
 
-                  {/* Thông tin sản phẩm */}
-                  <div className="flex-1 w-full text-center sm:text-left">
-                    <h3 className="text-xl font-bold text-gray-900">{item.name}</h3>
-                    
+                  <div className="flex-1 min-w-0 flex flex-col justify-between h-full min-h-[5rem] sm:min-h-[7rem]">
+                    <div className="flex justify-between items-start gap-2">
+                      <h3 className="text-sm sm:text-lg font-bold text-gray-900 leading-tight line-clamp-2">{item.name}</h3>
+
+                      {/* --- THAY ĐỔI: GỌI HÀM PROMPT THAY VÌ XÓA LUÔN --- */}
+                      <button
+                        onClick={() => promptRemoveItem(item.cartId)}
+                        className="text-gray-400 hover:text-red-500 p-1 -mr-2 -mt-1 transition"
+                      >
+                        <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </button>
+                    </div>
+
                     {item.hasPrescription ? (
-                      <div className="mt-2 flex flex-wrap justify-center sm:justify-start gap-2">
-                        <span className="bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1 rounded-full border border-blue-100" translate="no">
-                          Mắt phải (OD): {item.od || '0.00'}
+                      <div className="mt-1 flex flex-wrap gap-1 sm:gap-2">
+                        <span className="bg-blue-50 text-blue-700 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded border border-blue-100" translate="no">
+                          OD: {item.od || '0.00'}
                         </span>
-                        <span className="bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1 rounded-full border border-blue-100" translate="no">
-                          Mắt trái (OS): {item.os || '0.00'}
+                        <span className="bg-blue-50 text-blue-700 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded border border-blue-100" translate="no">
+                          OS: {item.os || '0.00'}
                         </span>
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500 mt-1">Kính không độ (Mắt thường)</p>
+                      <p className="text-[11px] sm:text-sm text-gray-500 mt-1">Mắt thường</p>
                     )}
-                    
-                    <div className="mt-4 font-black text-blue-600 text-lg">
-                      {item.price.toLocaleString('vi-VN')} đ
-                    </div>
-                  </div>
 
-                  {/* Cụm Nút Tăng/Giảm & Xóa */}
-                  <div className="flex sm:flex-col items-center gap-4 w-full sm:w-auto justify-between sm:justify-center border-t sm:border-t-0 pt-4 sm:pt-0">
-                    <div className="flex items-center bg-gray-100 rounded-full p-1">
-                      <button 
-                        onClick={() => updateQuantity(item.cartId, -1)}
-                        disabled={item.quantity <= 1}
-                        className="w-8 h-8 flex items-center justify-center bg-white rounded-full text-gray-600 shadow-sm disabled:opacity-50"
-                      >
-                        <Minus className="w-4 h-4" />
-                      </button>
-                      <span className="w-10 text-center font-bold text-gray-900">{item.quantity}</span>
-                      <button 
-                        onClick={() => updateQuantity(item.cartId, 1)}
-                        className="w-8 h-8 flex items-center justify-center bg-white rounded-full text-gray-600 shadow-sm hover:text-blue-600"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
+                    <div className="mt-2 flex items-end justify-between">
+                      <div className="font-black text-blue-600 text-[15px] sm:text-lg leading-none">
+                        {item.price.toLocaleString('vi-VN')} đ
+                      </div>
+
+                      <div className="flex items-center bg-gray-100 rounded border border-gray-200">
+                        <button onClick={() => updateQuantity(item.cartId, -1)} disabled={item.quantity <= 1} className="w-7 h-7 flex items-center justify-center bg-white text-gray-600 disabled:opacity-50">
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="w-8 text-center text-xs sm:text-sm font-bold text-gray-900 border-x border-gray-200">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item.cartId, 1)} className="w-7 h-7 flex items-center justify-center bg-white text-gray-600 hover:text-blue-600">
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
 
-                    <button 
-                      onClick={() => removeItem(item.cartId)}
-                      className="flex items-center justify-center gap-1 text-red-500 hover:text-red-700 hover:bg-red-10 px-3 py-2 rounded-xl transition"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                      <span className="text-sm font-bold sm:hidden">Xóa</span>
-                    </button>
                   </div>
-
                 </div>
               );
             })}
           </div>
 
-          {/* CỘT PHẢI: TỔNG KẾT ĐƠN HÀNG (BILL) */}
           <div className="lg:w-1/3">
             <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 sticky top-24">
               <h3 className="text-xl font-bold text-gray-900 mb-6">Tóm tắt đơn hàng</h3>
-              
+
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between text-gray-600">
                   <span>Tổng tiền ({calculateSelectedQuantity()} sản phẩm)</span>
@@ -236,29 +211,61 @@ export default function Cart() {
                 <p className="text-xs text-gray-400 mt-2 text-right">(Đã bao gồm VAT)</p>
               </div>
 
-              {/* KHÓA NÚT THANH TOÁN NẾU KHÔNG CHỌN GÌ */}
-              <button 
+              <button
                 disabled={selectedItems.length === 0}
+                // GẮN THÊM DÒNG ONCLICK NÀY: Nó sẽ chuyển trang và "cầm theo" mảng selectedItems
+                onClick={() => navigate('/checkout', { state: { selectedItems } })}
                 className={`w-full py-5 rounded-2xl font-bold text-xl transition flex items-center justify-center gap-2 shadow-lg transform active:scale-95
-                  ${selectedItems.length === 0 
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+      ${selectedItems.length === 0
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-gray-900 text-white hover:bg-blue-600'
                   }
-                `}
+    `}
               >
-                <ShieldCheck className="w-6 h-6" /> 
+                <ShieldCheck className="w-6 h-6" />
                 {selectedItems.length === 0 ? 'Vui lòng chọn sản phẩm' : `Thanh toán (${calculateSelectedQuantity()})`}
               </button>
-
-              <div className="mt-6 flex items-center justify-center gap-2 text-sm text-gray-500">
-                <ShieldCheck className="w-4 h-4 text-green-500" />
-                Thanh toán an toàn & bảo mật 100%
-              </div>
             </div>
           </div>
 
         </div>
       </div>
+
+      {/* ================= MODAL XÁC NHẬN XÓA ================= */}
+      {itemToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+                <AlertTriangle className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Bỏ sản phẩm này?</h3>
+              <p className="text-gray-500 mb-8 text-sm px-2">
+                Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng không?
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={cancelRemove}
+                className="flex-1 bg-gray-100 text-gray-700 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition"
+              >
+                Không
+              </button>
+              <button
+                onClick={confirmRemove}
+                className="flex-1 bg-red-500 text-white py-3.5 rounded-xl font-bold hover:bg-red-600 transition shadow-lg shadow-red-500/30"
+              >
+                Đồng ý
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+      {/* ======================================================= */}
+
     </div>
   );
 }

@@ -13,7 +13,7 @@ export const PRODUCTS = [
     id: 2,
     name: "Gọng Tròn Vintage Harry",
     brand: "Lensa",
-    price: 850000,
+    price: 8000,
     image: "https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&q=80&w=600",
     shape: "Tròn",
     isARAvailable: true,

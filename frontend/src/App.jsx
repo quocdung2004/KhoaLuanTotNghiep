@@ -6,6 +6,7 @@ import Home from './pages/customer/Home';
 import ProductDetail from './pages/customer/ProductDetail';
 import Cart from './pages/customer/Cart';
 import Prescription from './pages/customer/Prescription';
+import Checkout from './pages/customer/Checkout';
 
 // 2. Import các trang Admin & Staff
 import Dashboard from './pages/admin/Dashboard';
@@ -24,7 +25,7 @@ function App() {
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/my-prescription" element={<Prescription />} />
-
+          <Route path="/checkout" element={<Checkout />} />
           {/* LUỒNG NHÂN VIÊN (Staff) */}
           <Route path="/staff/orders" element={<OrderManagement />} />
 

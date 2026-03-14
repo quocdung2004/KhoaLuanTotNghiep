@@ -123,7 +123,7 @@ const Navbar = () => {
           {/* Khu vực phân quyền (chỉ để Demo) */}
           <div className="space-y-4">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Phân quyền nội bộ</p>
-            <Link to="/staff/orders" onClick={closeMenu} className="block text-green-600 font-medium bg-green-50 px-4 py-2 rounded-lg">
+            <Link to="/staff" onClick={closeMenu} className="block text-green-600 font-medium bg-green-50 px-4 py-2 rounded-lg">
               Khu vực Nhân viên
             </Link>
             <Link to="/admin" onClick={closeMenu} className="block text-red-600 font-medium bg-red-50 px-4 py-2 rounded-lg">

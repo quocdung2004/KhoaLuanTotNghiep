@@ -4,11 +4,14 @@ import { products } from '../data/products'
 import { ShoppingCart, Camera } from 'lucide-react'
 import TryOn from '../components/TryOn'
 import useCartStore from '../store/cartStore'
+import PrescriptionModal from '../components/PrescriptionModal'
 
 function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [showTryOn, setShowTryOn] = useState(false)
+  const [showPrescription, setShowPrescription] = useState(false)
+  const [prescription, setPrescription] = useState(null)
   const product = products.find((p) => p.id === parseInt(id))
   const addItem = useCartStore((state) => state.addItem)
   const [added, setAdded] = useState(false)
@@ -69,15 +72,15 @@ function ProductDetail() {
             <button
               onClick={handleAddToCart}
               className={`flex items-center gap-2 px-6 py-3 rounded-xl transition ${added
-                  ? 'bg-green-500 text-white'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                ? 'bg-green-500 text-white'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
             >
               <ShoppingCart size={20} />
               {added ? 'Đã thêm vào giỏ!' : 'Thêm vào giỏ'}
             </button>
             <button
-              onClick={() => setShowTryOn(true)}
+              onClick={() => setShowPrescription(true)}
               className="flex items-center gap-2 border-2 border-blue-600 text-blue-600 px-6 py-3 rounded-xl hover:bg-blue-50 transition"
             >
               <Camera size={20} />
@@ -87,8 +90,26 @@ function ProductDetail() {
         </div>
       </div>
 
+      {showPrescription && (
+        <PrescriptionModal
+          onClose={() => setShowPrescription(false)}
+          onConfirm={(data) => {
+            setPrescription(data)
+            setShowPrescription(false)
+            setShowTryOn(true)
+          }}
+        />
+      )}
+
       {showTryOn && (
-        <TryOn product={product} onClose={() => setShowTryOn(false)} />
+        <TryOn
+          product={product}
+          prescription={prescription}
+          onClose={() => {
+            setShowTryOn(false)
+            setPrescription(null)
+          }}
+        />
       )}
     </div>
   )
